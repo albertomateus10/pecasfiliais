@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque de Peças por Loja - Gravataí, Zona Sul, Viamão e Matriz</title>
+    <!-- SheetJS Local + CDN fallback -->
+    <script src="xlsx.full.min.js"></script>
+    <script>
+        if (typeof XLSX === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        header {
+            padding: 20px 24px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand-title h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .brand-title p {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Upload & Action Bar */
+        .action-bar {
+            padding: 16px 24px;
+            background-color: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-upload {
+            position: relative;
+            background-color: #2563eb;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-upload:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        #fileInput {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .file-status {
+            font-size: 0.86rem;
+            color: #475569;
+        }
+
+        .file-status.pending {
+            color: #d97706;
+            font-weight: 500;
+        }
+
+        .file-status.loaded {
+            color: #15803d;
+            font-weight: 600;
+        }
+
+        .search-and-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            width: 280px;
+            height: 40px;
+            padding: 0 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            outline: none;
+            background-color: #ffffff;
+        }
+
+        .search-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-export {
+            background-color: #10b981;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.88rem;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-export:hover {
+            background-color: #059669;
+        }
+
+        /* Summary Badges */
+        .summary-ribbon {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.85rem;
+            color: #64748b;
+            flex-wrap: wrap;
+        }
+
+        .summary-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 5px 12px;
+            border-radius: 6px;
+        }
+
+        .summary-badge strong {
+            color: #0f172a;
+            font-size: 0.92rem;
+        }
+
+        /* Table */
+        .table-container {
+            max-height: calc(100vh - 275px);
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            text-align: left;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 12px 16px;
+            border-bottom: 2px solid #cbd5e1;
+            z-index: 10;
+        }
+
+        tbody td {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+
+        tbody tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        .cell-code {
+            font-family: Consolas, monospace;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: 0.3px;
+        }
+
+        .cell-desc {
+            font-weight: 500;
+            color: #334155;
+        }
+
+        .col-number {
+            text-align: center;
+            font-weight: 600;
+            width: 110px;
+        }
+
+        .col-total {
+            text-align: center;
+            font-weight: 800;
+            width: 110px;
+            background-color: #f8fafc;
+        }
+
+        .stock-empty {
+            color: #cbd5e1;
+            font-weight: 400;
+        }
+
+        .stock-zero {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .stock-positive {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .stock-matriz-positive {
+            color: #2563eb;
+            font-weight: 800;
+        }
+
+        /* Tooltip de carros aplicáveis */
+        tbody tr[data-code] {
+            cursor: help;
+        }
+
+        .car-tooltip {
+            position: fixed;
+            z-index: 200;
+            max-width: 520px;
+            min-width: 220px;
+            background: #0f172a;
+            color: #f8fafc;
+            border-radius: 10px;
+            padding: 12px 14px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.35);
+            border: 1px solid #334155;
+            pointer-events: none;
+            display: none;
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        .car-tooltip .tt-head {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .car-tooltip .tt-code {
+            font-family: Consolas, monospace;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .car-tooltip .tt-name {
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .car-tooltip .tt-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .car-tooltip .tt-cars {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .car-tooltip .tt-car {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 5px;
+            padding: 2px 8px;
+            font-size: 0.76rem;
+            color: #e2e8f0;
+            white-space: nowrap;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="brand-title">
+                <h1>Quantidade de Peças por Loja</h1>
+                <p>Cruzamento dos códigos de peças com o estoque das lojas (Matriz, Gravataí, Zona Sul e Viamão)</p>
+            </div>
+            <div>
+                <a href="codigos.html" style="font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600;">
+                    ← Ver arquivo codigos.html
+                </a>
+            </div>
+        </header>
+
+        <!-- Actions Bar -->
+        <div class="action-bar">
+            <div class="upload-section">
+                <button class="btn-upload">
+                    📁 Subir Planilha de Estoque
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+                </button>
+                <div class="file-status pending" id="fileStatus">
+                    ⚠️ Nenhuma planilha carregada. Clique em "Subir Planilha de Estoque" para carregar as quantidades.
+                </div>
+            </div>
+
+            <div class="search-and-actions">
+                <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar código ou descrição...">
+                <button class="btn-export" id="btnExport">
+                    📥 Exportar Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Ribbon -->
+        <div class="summary-ribbon">
+            <div class="summary-badge">
+                Total de Códigos: <strong id="lblTotalCodes">101</strong>
+            </div>
+            <div class="summary-badge">
+                Total em Matriz: <strong id="lblTotalMatriz">-</strong>
+            </div>
+            <div class="summary-badge">
+                Total em Gravataí: <strong id="lblTotalGravatai">-</strong>
+            </div>
+            <div class="summary-badge">
+                Total em Zona Sul: <strong id="lblTotalZonaSul">-</strong>
+            </div>
+            <div class="summary-badge">
+                Total em Viamão: <strong id="lblTotalViamao">-</strong>
+            </div>
+            <div class="summary-badge">
+                Total Geral: <strong id="lblTotalGeral" style="color: #2563eb;">-</strong>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 45px; text-align: center;">#</th>
+                        <th style="width: 140px;">CÓDIGO</th>
+                        <th>DESCRIÇÃO DA PEÇA</th>
+                        <th class="col-number" style="color: #2563eb;">MATRIZ</th>
+                        <th class="col-number">GRAVATAÍ</th>
+                        <th class="col-number">ZONA SUL</th>
+                        <th class="col-number">VIAMÃO</th>
+                        <th class="col-total">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Injected via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Master Catalog of 101 parts extracted from codigos.html
+        const MASTER_PARTS = [
+            {"codigo": "9400164889", "nome": "Anel do Bujão", "carros": ["DUCATO X250", "SCUDO 1.5 (Antiga)"]},
+            {"codigo": "9677491780", "nome": "ANEL DO BUJÃO", "carros": ["TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "155258297", "nome": "Bomba d'água", "carros": ["DUCATO X250"]},
+            {"codigo": "155254522", "nome": "BOMBA D´AGUA", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "9467642480", "nome": "Correia da distribuição", "carros": ["DUCATO X250", "TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "155253981", "nome": "CORREIA DE DISTRIBUIÇÃO", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "5801467815", "nome": "CORREIA DE DISTRIBUIÇÃO", "carros": ["DUCATO"]},
+            {"codigo": "46357957", "nome": "CORREIA DENTADA", "carros": ["TORO 2.0"]},
+            {"codigo": "46337687", "nome": "Correia Distribuição", "carros": ["UNO 1.0 FIRE", "PALIO WEEKEND 1.4", "GRAND SIENA 1.0", "GRAND SIENA 1.4", "NOVA STRADA 1.4", "FIORINO 1.4 (2021/2022 para cima)", "MOBI 1.0 FIRE"]},
+            {"codigo": "46348571", "nome": "Correia dos órgão auxiliares", "carros": ["FASTBACK ABARTH 1.3T", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 1.3T MY27"]},
+            {"codigo": "46349670", "nome": "Correia dos órgão auxiliares", "carros": ["FASTBACK 1.0T"]},
+            {"codigo": "46357071", "nome": "Correia dos órgão auxiliares", "carros": ["DUCATO X250 2.2D MY26", "SCUDO 2.2 (Nova)"]},
+            {"codigo": "46357445", "nome": "Correia dos órgão auxiliares", "carros": ["TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "46360326", "nome": "Correia dos órgão auxiliares", "carros": ["TORO 1.3T MHEV"]},
+            {"codigo": "46358641", "nome": "Correia dos Orgãos Auxiliares", "carros": ["TORO 2.2TD MY26", "TORO 2.2TD MY27"]},
+            {"codigo": "55258359", "nome": "Correia dos Orgãos Auxiliares", "carros": ["CRONOS 1.8", "ARGO 1.8", "TORO 1.8"]},
+            {"codigo": "55267966", "nome": "Correia dos Órgãos Auxiliares", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "PULSE 1.3 AT", "PULSE 1.3 MT", "MOBI FIREFLY", "MOBI 1.0 MY27"]},
+            {"codigo": "9813908180", "nome": "CORREIA DOS ÓRGÃOS AUXILIARES", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "9809996880", "nome": "Correia dos orgãos auxiliares do motor", "carros": ["DUCATO X250"]},
+            {"codigo": "500388408", "nome": "CORREIA ORGÃOS AUXILIARES", "carros": ["DUCATO"]},
+            {"codigo": "55236185", "nome": "CORREIA TRANSMISSAO C/ AC", "carros": ["UNO 1.0 FIRE", "PALIO WEEKEND 1.4", "GRAND SIENA 1.4", "FIORINO 1.4 (2021/2022 para cima)", "FIORINO 1.3"]},
+            {"codigo": "55244798", "nome": "CORREIA TRANSMISSAO C/ AC", "carros": ["PALIO WEEKEND 1.8", "DOBLO 1.8"]},
+            {"codigo": "55258482", "nome": "Correia Transmissão c/ AC", "carros": ["GRAND SIENA 1.0", "NOVA STRADA 1.4", "MOBI 1.0 FIRE"]},
+            {"codigo": "46744566", "nome": "CORREIA TRANSMISSAO DH", "carros": ["UNO 1.0 FIRE", "PALIO WEEKEND 1.4", "FIORINO 1.4 (2021/2022 para cima)"]},
+            {"codigo": "55211240", "nome": "Correia Transmissão DH", "carros": ["NOVA STRADA 1.4", "FIORINO 1.4 (2021/2022 para cima)", "MOBI 1.0 FIRE"]},
+            {"codigo": "46354609", "nome": "CORREIAS DOS ÓRGÃOS AUXILIARES DO MOTOR", "carros": ["TORO 2.0"]},
+            {"codigo": "50048146", "nome": "CORREIAS DOS ÓRGÃOS AUXILIARES DO MOTOR", "carros": ["TORO 2.4"]},
+            {"codigo": "9813908880", "nome": "ELEMENTO DE FILTRO DE AR", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "77367623", "nome": "Elemento do filtor de Combustível", "carros": ["TORO 2.0", "TORO 2.2TD MY26", "TORO 2.2TD MY27", "TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "9878309480", "nome": "Elemento do filtor de Combustível", "carros": ["SCUDO 2.2 (Nova)"]},
+            {"codigo": "9853098280", "nome": "Elemento do filtro de ar do motor", "carros": ["SCUDO 2.2 (Nova)"]},
+            {"codigo": "1699580280", "nome": "Elemento do filtro de aspirção de ar do motor", "carros": ["TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "52222118", "nome": "Elemento do filtro de aspirção de ar do motor", "carros": ["DUCATO X250 2.2D MY26"]},
+            {"codigo": "46356228", "nome": "Elemento do filtro de óleo do motor", "carros": ["TORO 2.2TD MY26", "TORO 2.2TD MY27", "DUCATO X250 2.2D MY26", "SCUDO 2.2 (Nova)", "TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "51854598", "nome": "ELEMENTO FILTRANTE", "carros": ["UNO 1.0 FIRE", "GRAND SIENA 1.0", "GRAND SIENA 1.4", "NOVA STRADA 1.4", "FIORINO 1.4 (2021/2022 para cima)", "MOBI 1.0 FIRE"]},
+            {"codigo": "51857956", "nome": "ELEMENTO FILTRANTE", "carros": ["PALIO WEEKEND 1.8", "DOBLO 1.8"]},
+            {"codigo": "7082141", "nome": "ELEMENTO FILTRANTE", "carros": ["PALIO WEEKEND 1.4"]},
+            {"codigo": "52234083", "nome": "Elemento Filtrante do Ar", "carros": ["TORO 2.2TD MY26", "TORO 2.2TD MY27"]},
+            {"codigo": "50055447", "nome": "ELEMENTO FILTRANTE DO FILTRO ÓLEO", "carros": ["TORO 2.4"]},
+            {"codigo": "71754237", "nome": "ELEMENTO FILTRANTE DO FILTRO ÓLEO", "carros": ["TORO 2.0"]},
+            {"codigo": "51977574", "nome": "ELEMENTO FILTRANTE FILTRO AR", "carros": ["TORO 1.8", "TORO 2.4", "TORO 2.0"]},
+            {"codigo": "6000633316", "nome": "Filtro Anti Pólen", "carros": ["DUCATO X250"]},
+            {"codigo": "71775823", "nome": "FILTRO AR CONDICIONADO", "carros": ["500e"]},
+            {"codigo": "155253599", "nome": "FILTRO COMBUSTIVEL", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "77369138", "nome": "FILTRO COMBUSTIVEL", "carros": ["DUCATO", "DUCATO X250 2.2D MY26"]},
+            {"codigo": "155255862", "nome": "FILTRO DE AR", "carros": ["TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "52046268", "nome": "Filtro de Ar", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "FIORINO 1.3", "PULSE 1.3 AT", "PULSE 1.3 MT", "MOBI FIREFLY", "MOBI 1.0 MY27"]},
+            {"codigo": "52062431", "nome": "Filtro de Ar", "carros": ["CRONOS 1.8", "ARGO 1.8"]},
+            {"codigo": "52079874", "nome": "Filtro de Ar", "carros": ["NOVA STRADA 1.0T", "PULSE 1.0T AT", "PULSE 1.0T MT", "FASTBACK 1.0T"]},
+            {"codigo": "52080841", "nome": "Filtro de Ar", "carros": ["PULSE ABARTH 1.3T", "FASTBACK ABARTH 1.3T", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "7094559", "nome": "Filtro de Ar", "carros": ["DUCATO X250", "DUCATO"]},
+            {"codigo": "7096883", "nome": "Filtro de ar limpo do canister", "carros": ["CRONOS 1.0 MY27", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT"]},
+            {"codigo": "7097628", "nome": "Filtro de ar limpo do canister", "carros": ["MOBI 1.0 MY27"]},
+            {"codigo": "7099618", "nome": "Filtro de ar limpo do canister", "carros": ["TORO 1.3T MY26", "TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "155255800", "nome": "FILTRO DE COMBUSTÍVEL", "carros": ["TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "52162685", "nome": "Filtro de Combustível", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "CRONOS 1.8", "UNO 1.0 FIRE", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "PALIO WEEKEND 1.4", "PALIO WEEKEND 1.8", "GRAND SIENA 1.0", "GRAND SIENA 1.4", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "NOVA STRADA 1.4", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "ARGO 1.8", "FIORINO 1.4 (2021/2022 para cima)", "FIORINO 1.3", "PULSE 1.3 AT", "PULSE 1.3 MT", "MOBI 1.0 FIRE", "MOBI FIREFLY", "MOBI 1.0 MY27", "DOBLO 1.8", "TORO 1.8", "TORO 2.4"]},
+            {"codigo": "53489525", "nome": "Filtro de Combustível", "carros": ["NOVA STRADA 1.0T", "PULSE 1.0T AT", "PULSE 1.0T MT", "PULSE ABARTH 1.3T", "FASTBACK 1.0T", "FASTBACK ABARTH 1.3T", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "77368658", "nome": "Filtro de Combustível", "carros": ["DUCATO X250"]},
+            {"codigo": "155254505", "nome": "FILTRO DE ÓLEO DO MOTOR", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "46347605", "nome": "Filtro de Óleo do Motor", "carros": ["NOVA STRADA 1.0T", "PULSE 1.0T AT", "PULSE 1.0T MT", "PULSE ABARTH 1.3T", "FASTBACK 1.0T", "FASTBACK ABARTH 1.3T", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "7087808", "nome": "Filtro de Óleo do Motor", "carros": ["CRONOS 1.8", "PALIO WEEKEND 1.8", "ARGO 1.8", "DOBLO 1.8", "TORO 1.8"]},
+            {"codigo": "7094709", "nome": "Filtro de Óleo do Motor", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "FIORINO 1.3", "PULSE 1.3 AT", "PULSE 1.3 MT", "MOBI FIREFLY", "MOBI 1.0 MY27"]},
+            {"codigo": "9809532380", "nome": "Filtro de Óleo do Motor", "carros": ["DUCATO X250", "TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "6000655015", "nome": "FILTRO DE PÓLEN", "carros": ["SCUDO 1.5 (Antiga)", "e-SCUDO"]},
+            {"codigo": "46751179", "nome": "FILTRO OLEO", "carros": ["UNO 1.0 FIRE", "PALIO WEEKEND 1.4", "GRAND SIENA 1.0", "GRAND SIENA 1.4", "NOVA STRADA 1.4", "FIORINO 1.4 (2021/2022 para cima)", "MOBI 1.0 FIRE"]},
+            {"codigo": "71779555", "nome": "FILTRO OLEO", "carros": ["DUCATO"]},
+            {"codigo": "K04549626LA", "nome": "Fluído de freio - Mopar DOT 4S", "carros": ["TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "155255303", "nome": "Fluído de Freio Safebrake 16M (DOT 4+)", "carros": ["DUCATO X250 2.2D MY26", "SCUDO 1.5 (Antiga)", "SCUDO 2.2 (Nova)", "TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)", "TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "7093293_F", "nome": "Fluido para freio DOT 5.1", "carros": ["500e"]},
+            {"codigo": "2850000479", "nome": "Higienização do sistema de alimentação de combustível - Aditivo Isotech 012 Limpa Injetores GDI", "carros": ["TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "7098496", "nome": "Higienização do sistema de alimentação de combustível Aditivo DETOX DGA - SOLUBILIZANTE (180 ml)", "carros": ["TORO 2.2TD MY27", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "7099025", "nome": "Higienização do sistema de alimentação de combustível Aditivo DT300 TREATMENT (370 ml)", "carros": ["TORO 2.2TD MY27", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "155255880", "nome": "Kit correia dos orgãos auxiliares do motor (correia dos órgão auxiliares + tensionadores)", "carros": ["TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "7094488", "nome": "Liquido de Arrefecimento Diluido -35° (DFS)", "carros": ["SCUDO 1.5 (Antiga)", "e-SCUDO"]},
+            {"codigo": "K04549625LA_F", "nome": "MOPAR BRAKE FLUID DOT 4 - A cada 2 anos", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "CRONOS 1.8", "UNO 1.0 FIRE", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "PALIO WEEKEND 1.4", "PALIO WEEKEND 1.8", "GRAND SIENA 1.0", "GRAND SIENA 1.4", "NOVA STRADA 1.0T", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "NOVA STRADA 1.4", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "ARGO 1.8", "FIORINO 1.4 (2021/2022 para cima)", "FIORINO 1.3", "PULSE 1.0T AT", "PULSE 1.0T MT", "PULSE 1.3 AT", "PULSE 1.3 MT", "PULSE ABARTH 1.3T", "FASTBACK 1.0T", "FASTBACK ABARTH 1.3T", "MOBI 1.0 FIRE", "MOBI FIREFLY", "MOBI 1.0 MY27", "DOBLO 1.8", "DUCATO X250"]},
+            {"codigo": "K04549626LA_F", "nome": "MOPAR BRAKE FLUID DOT 4S - A cada 2 anos", "carros": ["TORO 1.8", "TORO 2.4", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 2.0", "TORO 2.2TD MY26", "TORO 2.2TD MY27", "DUCATO"]},
+            {"codigo": "Of20007", "nome": "MOPAR MAXPRO 5W30 (SN/GF-5)", "carros": ["CRONOS 1.8", "UNO 1.0 FIRE", "PALIO WEEKEND 1.4", "PALIO WEEKEND 1.8", "GRAND SIENA 1.0", "GRAND SIENA 1.4", "NOVA STRADA 1.4", "ARGO 1.8", "FIORINO 1.4 (2021/2022 para cima)", "MOBI 1.0 FIRE", "DOBLO 1.8", "TORO 1.8", "TORO 2.4"]},
+            {"codigo": "7094487", "nome": "Mopar Maxpro Syntetic Diesel DPF C2 5W30", "carros": ["TORO 2.0", "TORO 2.2TD MY26", "TORO 2.2TD MY27", "DUCATO", "TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)", "TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "7092778", "nome": "MOPAR MAXPRO SYNTHETIC 0W20 (SP/GF-6A)", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "FIORINO 1.3", "PULSE 1.3 AT", "PULSE 1.3 MT", "MOBI FIREFLY", "MOBI 1.0 MY27"]},
+            {"codigo": "7092779", "nome": "MOPAR MAXPRO SYNTHETIC 0W30", "carros": ["NOVA STRADA 1.0T", "PULSE 1.0T AT", "PULSE 1.0T MT", "PULSE ABARTH 1.3T", "FASTBACK 1.0T", "FASTBACK ABARTH 1.3T", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 1.3T MY27", "TORO 1.3T MHEV", "DUCATO X250", "SCUDO 1.5 (Antiga)"]},
+            {"codigo": "7096432", "nome": "Óleo da caixa de câmbio automática - ATF Dexrom VI - (embalagem de 1 litro)", "carros": ["TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "7099873", "nome": "Óleo da caixa de câmbio mecânica", "carros": ["TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP"]},
+            {"codigo": "7095576", "nome": "Óleo da caixa de cambio mecanica - SAE 75W – API GL4", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.8", "NOVA STRADA 1.0T", "NOVA STRADA 1.3 MT", "NOVA STRADA 1.4", "ARGO 1.0", "ARGO 1.3 MT", "FIORINO 1.3", "PULSE 1.0T MT", "PULSE 1.3 MT", "MOBI 1.0 FIRE", "MOBI FIREFLY", "MOBI 1.0 MY27"]},
+            {"codigo": "7096430", "nome": "Óleo da caixa de tranferência - Óleo lubrificante Dexron III", "carros": ["TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "K68218041LA_F", "nome": "Óleo do cj. diferencial traseiro - 80W 90GL-5 - (embalagem de 1 litro)", "carros": ["TITANO 2.2D MT (Antiga/9VC)", "TITANO 2.2D AT (Antiga/9VC)"]},
+            {"codigo": "7096425", "nome": "Óleo do conjunto diferencial traseiro - Óleo lubrificante API GL5 SAE 80W90", "carros": ["TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "K68231015LA_F", "nome": "Óleo do motor", "carros": ["DUCATO X250 2.2D MY26", "SCUDO 2.2 (Nova)"]},
+            {"codigo": "46356229", "nome": "Substituição da correia dentada do comando da distribuição do motor", "carros": ["TORO 2.2TD MY26", "TORO 2.2TD MY27", "DUCATO X250 2.2D MY26", "SCUDO 2.2 (Nova)", "TITANO DS 2.2D MT MY26/Nova/8AP", "TITANO DS 2.2D AT MY26/Nova/8AP", "TITANO DS 2.2D MT MY27/Nova/8AP", "TITANO DS 2.2D AT MY27/Nova/8AP"]},
+            {"codigo": "K68163849LA", "nome": "Substituição do líquido do sistema de arrefecimento do motor", "carros": ["TORO 1.3T MY27", "TORO 1.3T MHEV", "TORO 2.2TD MY27", "SCUDO 2.2 (Nova)"]},
+            {"codigo": "K68547228LA_F", "nome": "Substituição do líquido do sistema de arrefecimento do motor", "carros": ["TORO 2.2TD MY26"]},
+            {"codigo": "155253938", "nome": "TENSOR CORREIA DE DISTRIBUIÇÃO", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "155253564", "nome": "TENSOR CORREIA DOS ÓRGÃOS AUXILIARES", "carros": ["SCUDO 1.5 (Antiga)"]},
+            {"codigo": "155253402", "nome": "Tensor da correia de distribuição", "carros": ["DUCATO X250"]},
+            {"codigo": "9826368080", "nome": "Tensor da correia dos órgão auxiliares", "carros": ["DUCATO X250"]},
+            {"codigo": "46348847", "nome": "Vela Ignição", "carros": ["CRONOS 1.8", "ARGO 1.8", "TORO 1.8"]},
+            {"codigo": "46480362", "nome": "VELA IGNICAO", "carros": ["UNO 1.0 FIRE", "PALIO WEEKEND 1.4"]},
+            {"codigo": "55226520", "nome": "VELA IGNICAO", "carros": ["GRAND SIENA 1.4", "NOVA STRADA 1.4", "FIORINO 1.4 (2021/2022 para cima)"]},
+            {"codigo": "55267121", "nome": "Vela Ignição", "carros": ["PALIO WEEKEND 1.8", "GRAND SIENA 1.0", "MOBI 1.0 FIRE", "DOBLO 1.8"]},
+            {"codigo": "KSP148183AD", "nome": "VELA IGNIÇÃO", "carros": ["TORO 2.4"]},
+            {"codigo": "46336161", "nome": "Velas de Ignição", "carros": ["NOVA STRADA 1.0T", "PULSE 1.0T AT", "PULSE 1.0T MT", "PULSE ABARTH 1.3T", "FASTBACK 1.0T", "FASTBACK ABARTH 1.3T", "TORO 1.3T MY25", "TORO 1.3T MY26", "TORO 1.3T MY27", "TORO 1.3T MHEV"]},
+            {"codigo": "55267995", "nome": "Velas de Ignição", "carros": ["CRONOS 1.0 até MY26", "CRONOS 1.0 MY27", "CRONOS 1.3 até MY26", "CRONOS 1.3 MY27 MT", "CRONOS 1.3 MY27 AT", "UNO 1.0 FIREFLY", "UNO 1.3 FIREFLY", "NOVA STRADA 1.3 AT", "NOVA STRADA 1.3 MT", "ARGO 1.0", "ARGO 1.3 AT", "ARGO 1.3 MT", "FIORINO 1.3", "PULSE 1.3 AT", "PULSE 1.3 MT", "MOBI FIREFLY", "MOBI 1.0 MY27"]}
+        ];
+
+        // State: starts with NO spreadsheet loaded
+        let isSpreadsheetLoaded = false;
+        let partsData = MASTER_PARTS.map(p => ({
+            codigo: p.codigo,
+            nome: p.nome,
+            estoque_matriz: null,
+            estoque_gravatai: null,
+            estoque_zonasul: null,
+            estoque_viamao: null
+        }));
+
+        // Helper: Clean code for comparison
+        function cleanCode(c) {
+            if (!c) return '';
+            return c.toString().trim().toUpperCase().replace(/_F$/, '');
+        }
+
+        // Helper: Identify Store from string
+        function identifyStore(str) {
+            if (!str) return null;
+            const s = str.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            if (s.includes('matriz')) return 'matriz';
+            if (s.includes('gravatai')) return 'gravatai';
+            if (s.includes('zona sul') || s.includes('zonasul')) return 'zonasul';
+            if (s.includes('viamao')) return 'viamao';
+            return null;
+        }
+
+        // Toast
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+
+        // Render Table
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const search = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            let totM = 0, totG = 0, totZS = 0, totV = 0;
+
+            // Filter
+            const filtered = partsData.filter(item => {
+                if (!search) return true;
+                const c = (item.codigo || '').toLowerCase();
+                const n = (item.nome || '').toLowerCase();
+                return c.includes(search) || n.includes(search);
+            });
+
+            // Calculate totals
+            if (isSpreadsheetLoaded) {
+                partsData.forEach(item => {
+                    totM += (Number(item.estoque_matriz) || 0);
+                    totG += (Number(item.estoque_gravatai) || 0);
+                    totZS += (Number(item.estoque_zonasul) || 0);
+                    totV += (Number(item.estoque_viamao) || 0);
+                });
+
+                document.getElementById('lblTotalMatriz').textContent = totM;
+                document.getElementById('lblTotalGravatai').textContent = totG;
+                document.getElementById('lblTotalZonaSul').textContent = totZS;
+                document.getElementById('lblTotalViamao').textContent = totV;
+                document.getElementById('lblTotalGeral').textContent = (totM + totG + totZS + totV);
+            } else {
+                document.getElementById('lblTotalMatriz').textContent = '-';
+                document.getElementById('lblTotalGravatai').textContent = '-';
+                document.getElementById('lblTotalZonaSul').textContent = '-';
+                document.getElementById('lblTotalViamao').textContent = '-';
+                document.getElementById('lblTotalGeral').textContent = '-';
+            }
+
+            document.getElementById('lblTotalCodes').textContent = partsData.length;
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">Nenhum código encontrado.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+
+                if (!isSpreadsheetLoaded) {
+                    // Spreadsheet not loaded yet: show clean dashes
+                    tr.innerHTML = `
+                        <td style="text-align: center; color: #94a3b8; font-size: 0.8rem;">${idx + 1}</td>
+                        <td class="cell-code">${item.codigo}</td>
+                        <td class="cell-desc">${item.nome}</td>
+                        <td class="col-number stock-empty">-</td>
+                        <td class="col-number stock-empty">-</td>
+                        <td class="col-number stock-empty">-</td>
+                        <td class="col-number stock-empty">-</td>
+                        <td class="col-total stock-empty">-</td>
+                    `;
+                } else {
+                    const m = Number(item.estoque_matriz) || 0;
+                    const g = Number(item.estoque_gravatai) || 0;
+                    const zs = Number(item.estoque_zonasul) || 0;
+                    const v = Number(item.estoque_viamao) || 0;
+                    const total = m + g + zs + v;
+
+                    tr.innerHTML = `
+                        <td style="text-align: center; color: #94a3b8; font-size: 0.8rem;">${idx + 1}</td>
+                        <td class="cell-code">${item.codigo}</td>
+                        <td class="cell-desc">${item.nome}</td>
+                        <td class="col-number ${m > 0 ? 'stock-matriz-positive' : 'stock-zero'}">${m}</td>
+                        <td class="col-number ${g > 0 ? 'stock-positive' : 'stock-zero'}">${g}</td>
+                        <td class="col-number ${zs > 0 ? 'stock-positive' : 'stock-zero'}">${zs}</td>
+                        <td class="col-number ${v > 0 ? 'stock-positive' : 'stock-zero'}">${v}</td>
+                        <td class="col-total ${total > 0 ? 'stock-positive' : 'stock-zero'}">${total}</td>
+                    `;
+                }
+
+                tr.dataset.code = item.codigo;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Upload Spreadsheet and read stores
+        function handleFile(file) {
+            if (!file) return;
+
+            const statusEl = document.getElementById('fileStatus');
+            statusEl.className = 'file-status';
+            statusEl.innerHTML = `Lendo: <strong>${file.name}</strong>...`;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array' });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    // Find header row
+                    let headerIdx = -1;
+                    for (let i = 0; i < Math.min(15, rows.length); i++) {
+                        const r = rows[i] || [];
+                        if (r.some(cell => typeof cell === 'string' && /c[oó]d.*item|c[oó]digo|part.*number/i.test(cell))) {
+                            headerIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (headerIdx === -1) {
+                        alert('Não foi possível identificar o cabeçalho na planilha enviada.');
+                        statusEl.className = 'file-status pending';
+                        statusEl.innerHTML = `❌ Erro no arquivo <strong>${file.name}</strong>`;
+                        return;
+                    }
+
+                    const headers = (rows[headerIdx] || []).map(h => (h === undefined || h === null) ? '' : h.toString().trim());
+                    const findCol = (...patterns) => {
+                        for (const p of patterns) {
+                            const idx = headers.findIndex(h => p.test(h));
+                            if (idx !== -1) return idx;
+                        }
+                        return -1;
+                    };
+
+                    // Ordem de prioridade: nomes exatos primeiro (evita pegar "Preço Venda Empresa")
+                    const colCode = findCol(/^c[oó]d\.?\s*item$/i, /c[oó]d.*item/i, /^c[oó]digo$/i);
+                    const colStore = findCol(/^nome\s*da\s*empresa$/i, /nome.*empresa/i, /^empresa$/i, /^filial$/i, /^loja$/i);
+                    const colStock = findCol(/^estoque$/i, /^saldo$/i);
+
+                    if (colCode === -1 || colStore === -1 || colStock === -1) {
+                        alert('Não encontrei as colunas necessárias (Cód. Item, Nome da Empresa e Estoque) na planilha.');
+                        statusEl.className = 'file-status pending';
+                        statusEl.innerHTML = `❌ Colunas não encontradas em <strong>${file.name}</strong>`;
+                        return;
+                    }
+
+                    // Build lookup map from spreadsheet (soma se o mesmo código aparecer mais de uma vez na mesma loja)
+                    const stockMap = {};
+                    for (let i = headerIdx + 1; i < rows.length; i++) {
+                        const r = rows[i];
+                        if (!r || r[colCode] === undefined || r[colCode] === null || r[colCode] === '') continue;
+
+                        const code = cleanCode(r[colCode]);
+                        const store = identifyStore(r[colStore]);
+                        if (!code || !store) continue;
+
+                        if (!stockMap[code]) stockMap[code] = {};
+                        stockMap[code][store] = (stockMap[code][store] || 0) + (parseFloat(r[colStock]) || 0);
+                    }
+
+                    // Update partsData
+                    partsData = MASTER_PARTS.map(item => {
+                        const c = cleanCode(item.codigo);
+                        const storeRecord = stockMap[c];
+
+                        return {
+                            codigo: item.codigo,
+                            nome: item.nome,
+                            estoque_matriz: storeRecord ? (storeRecord.matriz || 0) : 0,
+                            estoque_gravatai: storeRecord ? (storeRecord.gravatai || 0) : 0,
+                            estoque_zonasul: storeRecord ? (storeRecord.zonasul || 0) : 0,
+                            estoque_viamao: storeRecord ? (storeRecord.viamao || 0) : 0
+                        };
+                    });
+
+                    isSpreadsheetLoaded = true;
+                    statusEl.className = 'file-status loaded';
+                    statusEl.innerHTML = `✅ Planilha ativa: <strong>${file.name}</strong> (${rows.length.toLocaleString('pt-BR')} linhas lidas)`;
+                    showToast('Planilha carregada e estoque atualizado com sucesso!');
+                    renderTable();
+
+                } catch (err) {
+                    console.error(err);
+                    alert('Erro ao processar o arquivo Excel.');
+                    statusEl.className = 'file-status pending';
+                    statusEl.innerHTML = `❌ Erro ao ler <strong>${file.name}</strong>`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Export to Excel
+        function exportExcel() {
+            if (!isSpreadsheetLoaded) {
+                alert('Por favor, suba uma planilha de estoque primeiro.');
+                return;
+            }
+
+            const data = [
+                ['Código', 'Descrição da Peça', 'Estoque Matriz', 'Estoque Gravataí', 'Estoque Zona Sul', 'Estoque Viamão', 'Total Geral']
+            ];
+
+            partsData.forEach(item => {
+                const m = Number(item.estoque_matriz) || 0;
+                const g = Number(item.estoque_gravatai) || 0;
+                const zs = Number(item.estoque_zonasul) || 0;
+                const v = Number(item.estoque_viamao) || 0;
+                data.push([
+                    item.codigo,
+                    item.nome,
+                    m,
+                    g,
+                    zs,
+                    v,
+                    (m + g + zs + v)
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Estoque Lojas');
+            XLSX.writeFile(wb, 'estoque_pecas_lojas.xlsx');
+            showToast('Arquivo Excel exportado!');
+        }
+
+        // Tooltip: mostra os carros em que a peça é aplicada ao passar o mouse na linha
+        function setupCarTooltip() {
+            const tip = document.createElement('div');
+            tip.className = 'car-tooltip';
+            document.body.appendChild(tip);
+
+            const tbody = document.getElementById('tableBody');
+            let currentCode = null;
+
+            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            function fill(code) {
+                const part = MASTER_PARTS.find(p => p.codigo === code);
+                if (!part) return false;
+                const cars = part.carros || [];
+                tip.innerHTML =
+                    `<div class="tt-head"><span class="tt-code">${esc(part.codigo)}</span><span class="tt-name">${esc(part.nome)}</span></div>` +
+                    `<div class="tt-title">Aplicada em ${cars.length} ${cars.length === 1 ? 'carro' : 'carros'}</div>` +
+                    (cars.length
+                        ? `<div class="tt-cars">${cars.map(c => `<span class="tt-car">${esc(c)}</span>`).join('')}</div>`
+                        : `<div style="color:#94a3b8;">Nenhum carro informado.</div>`);
+                return true;
+            }
+
+            function position(e) {
+                const gap = 16;
+                const w = tip.offsetWidth;
+                const h = tip.offsetHeight;
+                let x = e.clientX + gap;
+                let y = e.clientY + gap;
+                if (x + w > window.innerWidth - 8) x = e.clientX - w - gap;
+                if (x < 8) x = 8;
+                if (y + h > window.innerHeight - 8) y = e.clientY - h - gap;
+                if (y < 8) y = 8;
+                tip.style.left = x + 'px';
+                tip.style.top = y + 'px';
+            }
+
+            tbody.addEventListener('mousemove', e => {
+                const tr = e.target.closest('tr[data-code]');
+                if (!tr) { tip.style.display = 'none'; currentCode = null; return; }
+                const code = tr.dataset.code;
+                if (code !== currentCode) {
+                    currentCode = code;
+                    if (!fill(code)) { tip.style.display = 'none'; return; }
+                }
+                tip.style.display = 'block';
+                position(e);
+            });
+
+            tbody.addEventListener('mouseleave', () => {
+                tip.style.display = 'none';
+                currentCode = null;
+            });
+
+            // Esconde ao rolar a tabela
+            document.querySelector('.table-container').addEventListener('scroll', () => {
+                tip.style.display = 'none';
+                currentCode = null;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', setupCarTooltip);
+
+        // Initialize on page load (WITHOUT auto-loading any spreadsheet)
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            document.getElementById('searchInput').addEventListener('input', renderTable);
+            document.getElementById('btnExport').addEventListener('click', exportExcel);
+
+            // Initial render showing parts list ready for upload
+            renderTable();
+        });
+    </script>
+</body>
+</html>
