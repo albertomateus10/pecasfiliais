@@ -402,5 +402,45 @@
   {
     "codigo": "55267995",
     "nome": "Velas de Ignição"
+  },
+  {
+    "codigo": "OF20005",
+    "nome": "Limpeza do Bico Injetor"
+  },
+  {
+    "codigo": "GEL/BAL",
+    "nome": "Geometria e Balanceamento"
+  },
+  {
+    "codigo": "OF20003",
+    "nome": "Limpeza do TBI"
+  },
+  {
+    "codigo": "OF20004",
+    "nome": "Limpeza do Sistema de Freio"
+  },
+  {
+    "codigo": "OF20006",
+    "nome": "Higienização do Ar Condicionado"
+  },
+  {
+    "codigo": "FT7088810",
+    "nome": "Lubrificação das Partes Móveis"
+  },
+  {
+    "codigo": "OXI",
+    "nome": "Oxisanitização"
+  },
+  {
+    "codigo": "OF20021",
+    "nome": "Limpeza Técnica do Motor"
+  },
+  {
+    "codigo": "OF20002",
+    "nome": "Cristalizador de Para-brisa"
+  },
+  {
+    "codigo": "OF20009",
+    "nome": "Limpeza do Bico Injetor"
   }
 ]

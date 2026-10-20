@@ -50,7 +50,14 @@ const ALL_CAR_MODELS = [
 // Normalize strings (accents, uppercase, trim)
 function cleanCode(code) {
     if (!code) return '';
-    return code.toString().trim().toUpperCase().replace(/_F$/, '');
+    let c = code.toString().trim().toUpperCase().replace(/_F$/, '');
+    if (/^0F\d+$/.test(c)) {
+        c = 'OF' + c.slice(2);
+    }
+    if (c.replace(/\s+/g, '') === 'GEL/BAL' || c === 'GEL-BAL') {
+        c = 'GEL/BAL';
+    }
+    return c;
 }
 
 function normalizeStr(str) {
@@ -781,10 +788,10 @@ function exportarTabelaGeral() {
     const items = getProcessedItems();
     const rows = [
         [
-            'Código', 'Descrição da Peça', 'Locação Matriz', 'Estoque Matriz',
-            'Estoque Gravataí', 'Precisa Gravataí',
-            'Estoque Zona Sul', 'Precisa Zona Sul',
-            'Estoque Viamão', 'Precisa Viamão',
+            'Código', 'Descrição da Peça', 'Locação Matriz', 'Matriz',
+            'Gravataí', 'Precisa Gravataí',
+            'Zona Sul', 'Precisa Zona Sul',
+            'Viamão', 'Precisa Viamão',
             'Total a Enviar', 'Saldo Restante Matriz', 'Status Matriz',
             'Carros Aplicáveis'
         ]
@@ -855,7 +862,7 @@ function exportarCompras() {
         ['PEDIDO DE COMPRA DE PEÇAS - SAN MARINO FIAT'],
         ['Data:', new Date().toLocaleDateString('pt-BR')],
         [],
-        ['Código', 'Descrição', 'Estoque Matriz Atual', 'Falta Gravataí', 'Falta Zona Sul', 'Falta Viamão', 'Qtd Sugerida Compra', 'Custo Unitário']
+        ['Código', 'Descrição', 'Matriz Atual', 'Falta Gravataí', 'Falta Zona Sul', 'Falta Viamão', 'Qtd Sugerida Compra', 'Custo Unitário']
     ];
 
     items.forEach(it => {
