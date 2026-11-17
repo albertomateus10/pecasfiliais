@@ -221,6 +221,34 @@
             z-index: 10;
         }
 
+        thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: background-color 0.15s;
+        }
+
+        thead th.sortable:hover {
+            background-color: #e2e8f0;
+        }
+
+        thead th.sortable.sort-active {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .sort-indicator {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 0.68rem;
+            opacity: 0.45;
+            vertical-align: middle;
+        }
+
+        thead th.sortable.sort-active .sort-indicator {
+            opacity: 1;
+        }
+
         tbody td {
             padding: 10px 16px;
             border-bottom: 1px solid #f1f5f9;
@@ -247,13 +275,13 @@
         .col-number {
             text-align: center;
             font-weight: 600;
-            width: 110px;
+            width: 125px;
         }
 
         .col-total {
             text-align: center;
             font-weight: 800;
-            width: 110px;
+            width: 125px;
             background-color: #f8fafc;
         }
 
@@ -277,9 +305,8 @@
             font-weight: 800;
         }
 
-        /* Tooltip de carros aplicáveis apenas sobre o item (código e descrição) */
-        tbody tr[data-code] .cell-code,
-        tbody tr[data-code] .cell-desc {
+        /* Tooltip de carros aplicáveis apenas sobre o código */
+        tbody tr[data-code] .cell-code {
             cursor: help;
         }
 
@@ -370,11 +397,6 @@
                 <h1>Quantidade de Peças por Loja</h1>
                 <p>Cruzamento dos códigos de peças com o estoque das lojas (Matriz, Gravataí, Zona Sul e Viamão)</p>
             </div>
-            <div>
-                <a href="codigos.html" style="font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600;">
-                    ← Ver arquivo codigos.html
-                </a>
-            </div>
         </header>
 
         <!-- Actions Bar -->
@@ -427,11 +449,11 @@
                         <th style="width: 45px; text-align: center;">#</th>
                         <th style="width: 140px;">CÓDIGO</th>
                         <th>DESCRIÇÃO DA PEÇA</th>
-                        <th class="col-number" style="color: #2563eb;">MATRIZ</th>
-                        <th class="col-number">GRAVATAÍ</th>
-                        <th class="col-number">ZONA SUL</th>
-                        <th class="col-number">VIAMÃO</th>
-                        <th class="col-total">TOTAL</th>
+                        <th class="col-number sortable" data-sort="matriz" style="color: #2563eb;">MATRIZ<span class="sort-indicator">⇅</span></th>
+                        <th class="col-number sortable" data-sort="gravatai">GRAVATAÍ<span class="sort-indicator">⇅</span></th>
+                        <th class="col-number sortable" data-sort="zonasul">ZONA SUL<span class="sort-indicator">⇅</span></th>
+                        <th class="col-number sortable" data-sort="viamao">VIAMÃO<span class="sort-indicator">⇅</span></th>
+                        <th class="col-total sortable" data-sort="total">TOTAL<span class="sort-indicator">⇅</span></th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -2121,6 +2143,7 @@
 
         // State: starts with NO spreadsheet loaded
         let isSpreadsheetLoaded = false;
+        let sortState = { key: null, dir: null };
         let partsData = MASTER_PARTS.map(p => ({
             codigo: p.codigo,
             nome: p.nome,
@@ -2162,6 +2185,48 @@
             setTimeout(() => { t.style.display = 'none'; }, 3000);
         }
 
+        // Sort helpers
+        function getSortValue(item, key) {
+            if (key === 'total') {
+                return (Number(item.estoque_matriz) || 0)
+                    + (Number(item.estoque_gravatai) || 0)
+                    + (Number(item.estoque_zonasul) || 0)
+                    + (Number(item.estoque_viamao) || 0);
+            }
+            return Number(item[`estoque_${key}`]) || 0;
+        }
+
+        function updateSortHeaders() {
+            document.querySelectorAll('thead th.sortable').forEach(th => {
+                const key = th.dataset.sort;
+                const indicator = th.querySelector('.sort-indicator');
+                const isActive = sortState.key === key && sortState.dir !== null;
+                th.classList.toggle('sort-active', isActive);
+                if (indicator) {
+                    indicator.textContent = isActive ? (sortState.dir === 'asc' ? '▲' : '▼') : '⇅';
+                }
+            });
+        }
+
+        function setupSortHeaders() {
+            document.querySelectorAll('thead th.sortable').forEach(th => {
+                th.title = 'Clique para ordenar por quantidade';
+                th.addEventListener('click', () => {
+                    const key = th.dataset.sort;
+                    if (sortState.key !== key) {
+                        sortState = { key, dir: 'desc' };
+                    } else if (sortState.dir === 'desc') {
+                        sortState.dir = 'asc';
+                    } else {
+                        sortState = { key: null, dir: null };
+                    }
+                    updateSortHeaders();
+                    renderTable();
+                });
+            });
+            updateSortHeaders();
+        }
+
         // Render Table
         function renderTable() {
             const tbody = document.getElementById('tableBody');
@@ -2176,6 +2241,12 @@
                 const n = (item.nome || '').toLowerCase();
                 return c.includes(search) || n.includes(search);
             });
+
+            // Sort by selected store/total quantity
+            if (sortState.key && sortState.dir) {
+                const factor = sortState.dir === 'asc' ? 1 : -1;
+                filtered.sort((a, b) => (getSortValue(a, sortState.key) - getSortValue(b, sortState.key)) * factor);
+            }
 
             // Calculate totals
             if (isSpreadsheetLoaded) {
@@ -2379,7 +2450,7 @@
             showToast('Arquivo Excel exportado!');
         }
 
-        // Tooltip: mostra os carros em que a peça é aplicada ao passar o mouse na linha
+        // Tooltip: mostra os carros em que a peça é aplicada ao passar o mouse no código
         function setupCarTooltip() {
             const tip = document.createElement('div');
             tip.className = 'car-tooltip';
@@ -2418,13 +2489,13 @@
             }
 
             tbody.addEventListener('mousemove', e => {
-                const itemCell = e.target.closest('.cell-code, .cell-desc');
-                if (!itemCell) {
+                const codeCell = e.target.closest('.cell-code');
+                if (!codeCell) {
                     tip.style.display = 'none';
                     currentCode = null;
                     return;
                 }
-                const tr = itemCell.closest('tr[data-code]');
+                const tr = codeCell.closest('tr[data-code]');
                 if (!tr) {
                     tip.style.display = 'none';
                     currentCode = null;
@@ -2463,6 +2534,7 @@
 
             document.getElementById('searchInput').addEventListener('input', renderTable);
             document.getElementById('btnExport').addEventListener('click', exportExcel);
+            setupSortHeaders();
 
             // Initial render showing parts list ready for upload
             renderTable();
